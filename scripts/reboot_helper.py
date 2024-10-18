@@ -10,6 +10,7 @@ import syslog
 
 chk_log_level = syslog.LOG_ERR
 
+
 def _log_msg(lvl, pfx, msg):
     if lvl <= chk_log_level:
         print("{}: {}".format(pfx, msg))
@@ -31,6 +32,7 @@ def log_debug(m):
 # Global variable for platform chassis
 platform_chassis = None
 
+
 def load_platform_chassis():
     global platform_chassis
 
@@ -46,6 +48,7 @@ def load_platform_chassis():
         return False
 
     return True
+
 
 def reboot_module(module_name):
     """Reboot the specified module by invoking the platform API"""
@@ -68,22 +71,23 @@ def reboot_module(module_name):
                 log_info(f"Rebooting module {module_name}...")
                 try:
                     module.reboot()
-                    log_info(f"Reboot command sent for module {module_name}")
+                    log_info("Reboot command sent for module {module_name}")
                     return True
                 except NotImplementedError:
-                    log_error(f"Reboot not implemented for module {module_name}.")
+                    log_err("Reboot not implemented for module {module_name}.")
                     return False
                 except Exception as e:
-                    log_error(f"An error occurred while rebooting module {module_name}: {e}")
+                    log_err("An error occurred while rebooting module {module_name}: {e}")
                     return False
 
         # If the module with the given name is not found
-        log_err(f"Module {module_name} not found")
+        log_err("Module {module_name} not found")
         return False
 
     except Exception as e:
-        log_err(f"Error occurred while rebooting module {module_name}: {repr(e)}")
+        log_err("Error occurred while rebooting module {module_name}: {repr(e)}")
         return False
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
@@ -98,7 +102,7 @@ if __name__ == "__main__":
         if not success:
             sys.exit(1)
         else:
-            print(f"Reboot command sent for module {module_name}")
+            print("Reboot command sent for module {module_name}")
     else:
-        print(f"Unknown command: {command}")
+        print("Unknown command: {command}")
         sys.exit(1)

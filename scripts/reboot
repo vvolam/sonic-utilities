@@ -35,7 +35,6 @@ ASIC_TYPE=$(sonic-cfggen -y /etc/sonic/sonic_version.yml -v asic_type)
 SUBTYPE=$(sonic-cfggen -d -v DEVICE_METADATA.localhost.subtype)
 ASAN=$(sonic-cfggen -y /etc/sonic/sonic_version.yml -v asan)
 VERBOSE=no
-EXIT_SUCCESS=0
 EXIT_NEXT_IMAGE_NOT_EXISTS=4
 EXIT_SONIC_INSTALLER_VERIFY_REBOOT=21
 EXIT_PLATFORM_FW_AU_FAILURE=22
@@ -136,6 +135,8 @@ function show_help_and_exit()
     echo " "
     echo "    Available options:"
     echo "        -h, -? : getting this help"
+    echo "        -d : DPU module name on a smart switch, option is invalid when on DPU"
+    echo "        -p : Pre-shutdown steps on DPU, invalid on NPU"
 
     exit ${EXIT_SUCCESS}
 }
@@ -198,7 +199,7 @@ function get_dpu_ip()
 
 # Function to retrieve GNMI port from CONFIG_DB
 function get_gnmi_port() {
-    port=$(sonic-db-cli CONFIG_DB HGET "GNMI|gnmi" "port")
+    port=$(sonic-db-cli CONFIG_DB HGET "DPU_PORT|<TODO: PORT_NAME>" "gnmi")
     if [ $? -ne 0 ] || [ -z "$port" ]; then
         echo "Error: Failed to retrieve GNMI port"
         exit ${EXIT_ERROR}
@@ -293,7 +294,7 @@ function reboot_dpu_module()
 
 function parse_options()
 {
-    while getopts "h?vf" opt; do
+    while getopts "h?vfpd" opt; do
         case ${opt} in
             h|\? )
                 show_help_and_exit
@@ -348,6 +349,32 @@ function reboot_all_dpus() {
     wait
 }
 
+# Function to handle scenarios on smart switch
+function handle_smart_switch() {
+# TODO: Check if this is DPU or not, proceed only if PRE-SHUTDOWN is set on DPU, else throw error
+
+    if [ -f "$PLATFORM_JSON_PATH" ]; then
+        NUM_DPU=$(jq -r '.DPUS | length' "$PLATFORM_JSON_PATH" 2>/dev/null)
+        if [ "$NUM_DPU" -gt 0 ]; then
+            SMART_SWITCH="yes"
+        fi
+    fi
+
+    if [[ "$REBOOT_DPU" == "yes" ]]; then
+        if [[ "$SMART_SWITCH" == "yes" ]]; then
+            echo "User requested to reboot the device ${DPU_MODULE_NAME}"
+            reboot_dpu_module "$DPU_MODULE_NAME"
+        else
+            echo "Invalid '-d' option specified for a non-smart switch"
+            exit ${EXIT_ERROR}
+        fi
+    fi
+
+    if [[ "$SMART_SWITCH" == "yes" ]]; then
+        reboot_all_dpus "$NUM_DPU"
+    fi
+}
+
 parse_options $@
 
 # Exit if not superuser
@@ -358,19 +385,7 @@ fi
 
 debug "User requested rebooting device ..."
 
-if [ -f "$PLATFORM_JSON_PATH" ]; then
-    NUM_DPU=$(jq -r '.DPUS | length' "$PLATFORM_JSON_PATH" 2>/dev/null)
-    if [ "$NUM_DPU" -gt 0 ]; then
-        SMART_SWITCH="yes"
-    fi
-fi
-
-if [[ "$REBOOT_DPU" == "yes" && "$SMART_SWITCH" == "yes" ]]; then
-    echo "User requested to reboot the device ${DPU_MODULE_NAME}"
-    reboot_dpu_module "$DPU_MODULE_NAME"
-elif [ "$SMART_SWITCH" == "yes" ]; then
-    reboot_all_dpus "$NUM_DPU"
-fi
+handle_smart_switch
 
 check_conflict_boot_in_fw_update
 
