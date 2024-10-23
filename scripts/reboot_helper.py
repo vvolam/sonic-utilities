@@ -54,7 +54,7 @@ def reboot_module(module_name):
     """Reboot the specified module by invoking the platform API"""
 
     # Load the platform chassis if not already loaded
-    if not platform_chassis and not load_platform_chassis():
+    if not load_platform_chassis():
         log_err("Failed to load platform chassis")
         return False
 
@@ -89,6 +89,25 @@ def reboot_module(module_name):
         return False
 
 
+def is_dpu():
+    """Check if script is running on DPU module"""
+
+    # Load the platform chassis if not already loaded
+    if not load_platform_chassis():
+        log_err("Failed to load platform chassis")
+        return False
+
+    if not platform_chassis.is_smartswitch():
+        return False
+
+    # Iterate over the modules
+    for module in platform_chassis.get_all_modules():
+        if "DPU" in module.get_name():
+            return True
+
+    return False
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Usage: reboot_helper.py <command> <module_name>")
@@ -103,6 +122,11 @@ if __name__ == "__main__":
             sys.exit(1)
         else:
             print("Reboot command sent for module {module_name}")
+    elif command == "is_dpu":
+        if is_dpu():
+            print("Script is running on DPU module")
+        else:
+            sys.exit(1)
     else:
         print("Unknown command: {command}")
         sys.exit(1)

@@ -199,7 +199,8 @@ function get_dpu_ip()
 
 # Function to retrieve GNMI port from CONFIG_DB
 function get_gnmi_port() {
-    port=$(sonic-db-cli CONFIG_DB HGET "DPU_PORT|<TODO: PORT_NAME>" "gnmi")
+    local DPU_NAME=$1
+    port=$(sonic-db-cli CONFIG_DB HGET "DPU_PORT|$DPU_NAME" "gnmi")
     if [ $? -ne 0 ] || [ -z "$port" ]; then
         echo "Error: Failed to retrieve GNMI port"
         exit ${EXIT_ERROR}
@@ -250,7 +251,12 @@ function reboot_dpu_module()
 
     # Retrieve DPU IP and GNMI port
     dpu_ip=$(get_dpu_ip "${DPU_NAME}")
-    port=$(get_gnmi_port)
+    port=$(get_gnmi_port "${DPU_NAME}")
+
+    if [ -z "$dpu_ip" ] || [ -z "$port" ]; then
+        echo "Error: Failed to retrieve DPU IP or GNMI port for ${DPU_NAME}"
+        exit ${EXIT_ERROR}
+    fi
 
     # Issue GNOI client command to reboot the DPU
     gnoi_client -target ${dpu_ip}:${port} -logtostderr -insecure -rpc Reboot -jsonin '{"method":3}'
@@ -261,6 +267,10 @@ function reboot_dpu_module()
 
     # Retrieve dpu_halt_services_timeout value using jq
     dpu_halt_services_timeout=$(jq -r '.dpu_halt_services_timeout' "$PLATFORM_JSON_PATH" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to retrieve dpu_halt_services_timeout from ${PLATFORM_JSON_PATH}"
+        exit ${EXIT_ERROR}
+    fi
 
     # Poll on reboot status response with a timeout mechanism
     poll_interval=5
@@ -286,9 +296,11 @@ function reboot_dpu_module()
 
     # Update STATE_DB and handle PCIe removal and rescan
     sonic-db-cli state_db set "PCIE_DETACH_INFO|${DPU_NAME}" '{"dpu_id": "'${DPU_INDEX}'", "dpu_state": "detaching", "bus_info": "'${DPU_BUS_INFO}'"}'
+
     echo 1 > /sys/bus/pci/devices/${DPU_BUS_INFO}/remove
     reboot_platform_module "${DPU_NAME}"
     echo 1 > /sys/bus/pci/rescan
+
     sonic-db-cli state_db del "PCIE_DETACH_INFO|${DPU_NAME}"
 }
 
@@ -351,13 +363,17 @@ function reboot_all_dpus() {
 
 # Function to handle scenarios on smart switch
 function handle_smart_switch() {
-# TODO: Check if this is DPU or not, proceed only if PRE-SHUTDOWN is set on DPU, else throw error
-
     if [ -f "$PLATFORM_JSON_PATH" ]; then
         NUM_DPU=$(jq -r '.DPUS | length' "$PLATFORM_JSON_PATH" 2>/dev/null)
         if [ "$NUM_DPU" -gt 0 ]; then
             SMART_SWITCH="yes"
         fi
+    fi
+
+    is_dpu=$(python3 -c "import reboot_helper; reboot_helper.is_dpu()")
+    if [[ "$is_dpu" == "True" ] && [ "$PRE_SHUTDOWN" != "yes" ]]; then
+        echo "Invalid, '-p' option not specified for a DPU"
+        exit ${EXIT_ERROR}
     fi
 
     if [[ "$REBOOT_DPU" == "yes" ]]; then
