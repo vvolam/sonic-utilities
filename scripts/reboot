@@ -371,8 +371,11 @@ function handle_smart_switch() {
     fi
 
     is_dpu=$(python3 -c "import reboot_helper; reboot_helper.is_dpu()")
-    if [[ "$is_dpu" == "True" ] && [ "$PRE_SHUTDOWN" != "yes" ]]; then
+    if [[ "$is_dpu" == "True" && "$PRE_SHUTDOWN" != "yes" ]]; then
         echo "Invalid, '-p' option not specified for a DPU"
+        exit ${EXIT_ERROR}
+    elif [[ "$is_dpu" != "True" && "$PRE_SHUTDOWN" == "yes" ]]; then
+        echo "Invalid '-p' option specified for a non-DPU"
         exit ${EXIT_ERROR}
     fi
 
