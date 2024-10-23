@@ -370,15 +370,6 @@ function handle_smart_switch() {
         fi
     fi
 
-    is_dpu=$(python3 -c "import reboot_helper; reboot_helper.is_dpu()")
-    if [[ "$is_dpu" == "True" && "$PRE_SHUTDOWN" != "yes" ]]; then
-        echo "Invalid, '-p' option not specified for a DPU"
-        exit ${EXIT_ERROR}
-    elif [[ "$is_dpu" != "True" && "$PRE_SHUTDOWN" == "yes" ]]; then
-        echo "Invalid '-p' option specified for a non-DPU"
-        exit ${EXIT_ERROR}
-    fi
-
     if [[ "$REBOOT_DPU" == "yes" ]]; then
         if [[ "$SMART_SWITCH" == "yes" ]]; then
             echo "User requested to reboot the device ${DPU_MODULE_NAME}"
@@ -390,7 +381,21 @@ function handle_smart_switch() {
     fi
 
     if [[ "$SMART_SWITCH" == "yes" ]]; then
-        reboot_all_dpus "$NUM_DPU"
+        is_dpu=$(python3 -c "import reboot_helper; reboot_helper.is_dpu()")
+
+        # Check if system is a DPU and handle -p option accordingly
+        if [[ "$is_dpu" == "True" && "$PRE_SHUTDOWN" != "yes" ]]; then
+            echo "Invalid, '-p' option not specified for a DPU"
+            exit ${EXIT_ERROR}
+        elif [[ "$is_dpu" != "True" && "$PRE_SHUTDOWN" == "yes" ]]; then
+            echo "Invalid '-p' option specified for a non-DPU"
+            exit ${EXIT_ERROR}
+        fi
+
+        # If not a DPU, reboot all DPUs in parallel
+        if [[ "$is_dpu" != "True" ]]; then
+            reboot_all_dpus "$NUM_DPU"
+        fi
     fi
 }
 
