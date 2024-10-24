@@ -189,7 +189,7 @@ function check_conflict_boot_in_fw_update()
 function get_dpu_ip()
 {
     local DPU_NAME=$1
-    dpu_ip=$(sonic-db-cli CONFIG_DB HGET "DHCP_SERVER_IPV4_PORT|bridge-midplane|${DPU_NAME}" "ips")
+    dpu_ip=$(sonic-db-cli CONFIG_DB HGET "DHCP_SERVER_IPV4_PORT|bridge-midplane|${DPU_NAME}" "ips@")
     if [ $? -ne 0 ] || [ -z "$dpu_ip" ]; then
         echo "Error: Failed to retrieve DPU IP address for ${DPU_NAME}"
         exit ${EXIT_ERROR}
