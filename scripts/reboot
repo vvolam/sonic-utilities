@@ -322,7 +322,7 @@ function parse_options()
                 ;;
             d )
                 REBOOT_DPU="yes"
-                DPU_MODULE_NAME="$optarg"
+                DPU_MODULE_NAME="$OPTARG"
                 ;;
             p )
                 PRE_SHUTDOWN="yes"
