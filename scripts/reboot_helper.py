@@ -76,7 +76,7 @@ def reboot_module(module_name):
                 except NotImplementedError:
                     log_err("Reboot not implemented for module {module_name}.")
                     return False
-                except Exception as e:
+                except Exception as e:  # noqa: F841
                     log_err("An error occurred while rebooting module {module_name}: {e}")
                     return False
 
@@ -84,7 +84,7 @@ def reboot_module(module_name):
         log_err("Module {module_name} not found")
         return False
 
-    except Exception as e:
+    except Exception as e:  # noqa: F841
         log_err("Error occurred while rebooting module {module_name}: {repr(e)}")
         return False
 
