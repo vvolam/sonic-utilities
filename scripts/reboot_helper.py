@@ -4,9 +4,9 @@
 #
 # Utility helper for reboot within SONiC
 
-import sonic_platform
 import sys
 import syslog
+import sonic_platform
 
 chk_log_level = syslog.LOG_ERR
 
@@ -56,6 +56,9 @@ def reboot_module(module_name):
     # Load the platform chassis if not already loaded
     if not load_platform_chassis():
         log_err("Failed to load platform chassis")
+        return False
+
+    if not platform_chassis.is_smartswitch():
         return False
 
     # Iterate over the modules to find the one with the specified name

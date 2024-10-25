@@ -11,8 +11,6 @@ PLATFORM_UPDATE_REBOOT_CAUSE="platform_update_reboot_cause"
 REBOOT_CAUSE_FILE="/host/reboot-cause/reboot-cause.txt"
 PLATFORM_REBOOT_PRE_CHECK="platform_reboot_pre_check"
 REBOOT_TIME=$(date)
-PLATFORM_JSON_FILE="platform.json"
-PLATFORM_JSON_PATH="${DEVPATH}/${PLATFORM}/${PLATFORM_JSON_FILE}"
 
 # Reboot immediately if we run the kdump capture kernel
 VMCORE_FILE=/proc/vmcore
@@ -39,6 +37,8 @@ EXIT_NEXT_IMAGE_NOT_EXISTS=4
 EXIT_SONIC_INSTALLER_VERIFY_REBOOT=21
 EXIT_PLATFORM_FW_AU_FAILURE=22
 PLATFORM_FWUTIL_AU_REBOOT_HANDLE="platform_fw_au_reboot_handle"
+PLATFORM_JSON_FILE="platform.json"
+PLATFORM_JSON_PATH="${DEVPATH}/${PLATFORM}/${PLATFORM_JSON_FILE}"
 REBOOT_SCRIPT_NAME=$(basename $0)
 REBOOT_TYPE="${REBOOT_SCRIPT_NAME}"
 TAG_LATEST=no
@@ -213,7 +213,7 @@ function get_reboot_status()
 {
     local dpu_ip=$1
     local port=$2
-    reboot_status=$(gnoi_client -target ${dpu_ip}:${port} -logtostderr -insecure -rpc RebootStatus)
+    reboot_status=$(docker exec -i gnmi gnoi_client -target ${dpu_ip}:${port} -logtostderr -insecure -rpc RebootStatus)
     if [ $? -ne 0 ] || [ -z "$reboot_status" ]; then
         echo "Error: Failed to send reboot status command to DPU ${DPU_NAME}"
         exit ${EXIT_ERROR}
@@ -259,7 +259,7 @@ function reboot_dpu_module()
     fi
 
     # Issue GNOI client command to reboot the DPU
-    gnoi_client -target ${dpu_ip}:${port} -logtostderr -insecure -rpc Reboot -jsonin '{"method":3}'
+    docker exec -i gnmi gnoi_client -target ${dpu_ip}:${port} -logtostderr -insecure -rpc Reboot -jsonin '{"method":3}'
     if [ $? -ne 0 ]; then
         echo "Error: Failed to send reboot command to DPU ${DPU_NAME}"
         exit ${EXIT_ERROR}
